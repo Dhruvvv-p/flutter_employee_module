@@ -1,0 +1,101 @@
+﻿name: Build and Publish AAR
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout flutter_employee_module
+        uses: actions/checkout@v3
+
+      - name: Read version from pubspec.yaml
+        id: version
+        run: |
+          VERSION=$(grep '^version:' pubspec.yaml | sed 's/version: //' | sed 's/+.*//' | tr -d ' ')
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "📦 Building version: $VERSION"
+
+      - name: Setup Java
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.5'
+          channel: 'stable'
+
+      - name: Flutter pub get
+        run: flutter pub get
+
+      - name: Build AAR
+        run: flutter build aar --no-profile
+
+      - name: Rename version folders and files
+        run: |
+          VERSION=${{ env.VERSION }}
+          BASE="build/host/outputs/repo/com/example/flutter_employee_module"
+
+          for VARIANT in flutter_debug flutter_release; do
+            OLD_DIR="$BASE/$VARIANT/1.0"
+            NEW_DIR="$BASE/$VARIANT/$VERSION"
+
+            if [ -d "$OLD_DIR" ]; then
+              mv "$OLD_DIR" "$NEW_DIR"
+              for FILE in "$NEW_DIR"/*; do
+                FILENAME=$(basename "$FILE")
+                NEW_FILENAME="${FILENAME//1.0/$VERSION}"
+                if [ "$FILENAME" != "$NEW_FILENAME" ]; then
+                  mv "$FILE" "$NEW_DIR/$NEW_FILENAME"
+                fi
+              done
+            fi
+          done
+
+          find "$BASE" -name "*.pom" -o -name "*.module" -o -name "maven-metadata.xml" | while read FILE; do
+            sed -i "s/1\.0/$VERSION/g" "$FILE"
+          done
+
+          echo "✅ Renamed to version $VERSION"
+
+      - name: Checkout flutter_employee_sdk
+        uses: actions/checkout@v3
+        with:
+          repository: DhruvPanchalSL/flutter_employee_sdk
+          token: ${{ secrets.SDK_REPO_TOKEN }}
+          path: sdk_repo
+
+      - name: Copy AARs to SDK repo
+        run: |
+          cp -r build/host/outputs/repo/. sdk_repo/repo/
+          echo "✅ Copied AARs"
+
+      - name: Push to SDK repo with version tag
+        run: |
+          VERSION=${{ env.VERSION }}
+          cd sdk_repo
+          git config user.name "GitHub Actions Bot"
+          git config user.email "actions@github.com"
+          git add .
+          git diff --staged --quiet && echo "No changes to commit" && exit 0
+          git commit -m "🚀 Release Flutter Employee SDK v$VERSION"
+          git push
+          git tag "v$VERSION"
+          git push origin "v$VERSION"
+          echo "✅ SDK repo tagged v$VERSION"
+
+      - name: Tag Flutter module repo
+        run: |
+          VERSION=${{ env.VERSION }}
+          git config user.name "GitHub Actions Bot"
+          git config user.email "actions@github.com"
+          git tag "v$VERSION"
+          git push origin "v$VERSION"
+          echo "✅ Module repo tagged v$VERSION"
