@@ -11,17 +11,17 @@ jobs:
 
     steps:
       - name: Checkout flutter_employee_module
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Read version from pubspec.yaml
         id: version
         run: |
           VERSION=$(grep '^version:' pubspec.yaml | sed 's/version: //' | sed 's/+.*//' | tr -d ' ')
           echo "VERSION=$VERSION" >> $GITHUB_ENV
-          echo "📦 Building version: $VERSION"
+          echo "Building version: $VERSION"
 
       - name: Setup Java
-        uses: actions/setup-java@v3
+        uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '17'
@@ -63,10 +63,10 @@ jobs:
             sed -i "s/1\.0/$VERSION/g" "$FILE"
           done
 
-          echo "✅ Renamed to version $VERSION"
+          echo "Renamed to version $VERSION"
 
       - name: Checkout flutter_employee_sdk
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: DhruvPanchalSL/flutter_employee_sdk
           token: ${{ secrets.SDK_REPO_TOKEN }}
@@ -75,7 +75,7 @@ jobs:
       - name: Copy AARs to SDK repo
         run: |
           cp -r build/host/outputs/repo/. sdk_repo/repo/
-          echo "✅ Copied AARs"
+          echo "Copied AARs"
 
       - name: Push to SDK repo with version tag
         run: |
@@ -85,17 +85,18 @@ jobs:
           git config user.email "actions@github.com"
           git add .
           git diff --staged --quiet && echo "No changes to commit" && exit 0
-          git commit -m "🚀 Release Flutter Employee SDK v$VERSION"
+          git commit -m "Release Flutter Employee SDK v$VERSION"
           git push
           git tag "v$VERSION"
           git push origin "v$VERSION"
-          echo "✅ SDK repo tagged v$VERSION"
+          echo "SDK repo tagged v$VERSION"
 
       - name: Tag Flutter module repo
         run: |
           VERSION=${{ env.VERSION }}
+          git remote set-url origin https://x-access-token:${{ secrets.SDK_REPO_TOKEN }}@github.com/DhruvPanchalSL/flutter_employee_module.git
           git config user.name "GitHub Actions Bot"
           git config user.email "actions@github.com"
           git tag "v$VERSION"
           git push origin "v$VERSION"
-          echo "✅ Module repo tagged v$VERSION"
+          echo "Module repo tagged v$VERSION"
