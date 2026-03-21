@@ -25,7 +25,8 @@ class EmployeeScreen extends StatefulWidget {
 }
 
 class _EmployeeScreenState extends State<EmployeeScreen>
-    with WidgetsBindingObserver {  // ← ADD THIS
+    with WidgetsBindingObserver {
+  // ← ADD THIS
   String employeeName = "Loading...";
   String employeeId = "Loading...";
   Timer? _debugTimer;
@@ -123,6 +124,7 @@ class _EmployeeScreenState extends State<EmployeeScreen>
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
+                const Text('Version Test'),
                 const Icon(Icons.badge, size: 64, color: Color(0xFF1A237E)),
                 const SizedBox(height: 16),
                 const Text(
@@ -148,10 +150,7 @@ class _EmployeeScreenState extends State<EmployeeScreen>
           '$label: ',
           style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
         ),
-        Text(
-          value,
-          style: const TextStyle(fontSize: 16, color: Colors.indigo),
-        ),
+        Text(value, style: const TextStyle(fontSize: 16, color: Colors.indigo)),
       ],
     );
   }
