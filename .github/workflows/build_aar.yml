@@ -60,11 +60,11 @@ jobs:
           done
 
           find "$BASE" \( -name "*.pom" -o -name "*.module" -o -name "maven-metadata.xml" \) | while read FILE; do
-            sed -i 's|<version>1\.0</version>|<version>'"$VERSION"'</version>|g' "$FILE"
+            sed -i "s|<version>[0-9]*\.[0-9]*\.[0-9]*</version>|<version>$VERSION</version>|" "$FILE"
             sed -i 's|flutter_debug-1\.0|flutter_debug-'"$VERSION"'|g' "$FILE"
             sed -i 's|flutter_release-1\.0|flutter_release-'"$VERSION"'|g' "$FILE"
-            sed -i 's|<latest>1\.0</latest>|<latest>'"$VERSION"'</latest>|g' "$FILE"
-            sed -i 's|<release>1\.0</release>|<release>'"$VERSION"'</release>|g' "$FILE"
+            sed -i 's|<latest>[0-9]*\.[0-9]*\.[0-9]*</latest>|<latest>'"$VERSION"'</latest>|g' "$FILE"
+            sed -i 's|<release>[0-9]*\.[0-9]*\.[0-9]*</release>|<release>'"$VERSION"'</release>|g' "$FILE"
           done
 
           echo "Renamed to version $VERSION"
