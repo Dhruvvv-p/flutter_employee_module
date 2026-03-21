@@ -87,9 +87,9 @@ jobs:
           git diff --staged --quiet && echo "No changes to commit" && exit 0
           git commit -m "Release Flutter Employee SDK v$VERSION"
           git push
-          git tag "v$VERSION"
-          git push origin "v$VERSION"
-          echo "SDK repo tagged v$VERSION"
+          git tag "v$VERSION" 2>/dev/null || echo "Tag v$VERSION already exists, skipping"
+          git push origin "v$VERSION" 2>/dev/null || echo "Tag already pushed, skipping"
+          echo "SDK repo done v$VERSION"
 
       - name: Tag Flutter module repo
         run: |
@@ -97,6 +97,6 @@ jobs:
           git remote set-url origin https://x-access-token:${{ secrets.SDK_REPO_TOKEN }}@github.com/DhruvPanchalSL/flutter_employee_module.git
           git config user.name "GitHub Actions Bot"
           git config user.email "actions@github.com"
-          git tag "v$VERSION"
-          git push origin "v$VERSION"
-          echo "Module repo tagged v$VERSION"
+          git tag "v$VERSION" 2>/dev/null || echo "Tag v$VERSION already exists, skipping"
+          git push origin "v$VERSION" 2>/dev/null || echo "Tag already pushed, skipping"
+          echo "Module repo done v$VERSION"
