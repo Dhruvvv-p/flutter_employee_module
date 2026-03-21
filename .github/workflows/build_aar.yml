@@ -14,7 +14,6 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Read version from pubspec.yaml
-        id: version
         run: |
           VERSION=$(grep '^version:' pubspec.yaml | sed 's/version: //' | sed 's/+.*//' | tr -d ' ')
           echo "VERSION=$VERSION" >> $GITHUB_ENV
@@ -35,22 +34,19 @@ jobs:
       - name: Flutter pub get
         run: flutter pub get
 
-      - name: Build AAR and fix versioning
+      - name: Build AAR
+        run: flutter build aar --no-profile
+
+      - name: Fix versioning
         run: |
           VERSION=${{ env.VERSION }}
-          flutter build aar --no-profile
-          
           BASE="build/host/outputs/repo/com/example/flutter_employee_module"
-          
-          # Rename folders from 1.0 to VERSION
+
           for VARIANT in flutter_debug flutter_release; do
             OLD_DIR="$BASE/$VARIANT/1.0"
             NEW_DIR="$BASE/$VARIANT/$VERSION"
-            
             if [ -d "$OLD_DIR" ]; then
               mv "$OLD_DIR" "$NEW_DIR"
-              
-              # Rename files inside folder
               for FILE in "$NEW_DIR"/*; do
                 FILENAME=$(basename "$FILE")
                 NEW_FILENAME="${FILENAME//1.0/$VERSION}"
@@ -60,58 +56,9 @@ jobs:
               done
             fi
           done
-          
-          # Fix pom files using Python for reliable XML editing
-          find "$BASE" -name "*.pom" | while read FILE; do
-            python3 << PYEOF
-import re
 
-filepath = "$FILE"
-version = "$VERSION"
-
-with open(filepath, 'r') as f:
-    content = f.read()
-
-# Fix artifact version - only the one right after artifactId
-content = re.sub(
-    r'(<artifactId>flutter_(?:debug|release)</artifactId>\s*\n\s*<version>)[^<]*(</version>)',
-    r'\g<1>' + version + r'\g<2>',
-    content
-)
-
-# Fix filename references inside pom
-content = re.sub(r'flutter_(debug|release)-1\.0', r'flutter_\1-' + version, content)
-
-with open(filepath, 'w') as f:
-    f.write(content)
-
-print(f"Fixed: {filepath}")
-PYEOF
-          done
-          
-          # Fix maven-metadata.xml files
-          find "$BASE" -name "maven-metadata.xml" | while read FILE; do
-            python3 << PYEOF
-import re
-
-filepath = "$FILE"
-version = "$VERSION"
-
-with open(filepath, 'r') as f:
-    content = f.read()
-
-content = re.sub(r'<latest>[^<]*</latest>', f'<latest>{version}</latest>', content)
-content = re.sub(r'<release>[^<]*</release>', f'<release>{version}</release>', content)
-content = re.sub(r'<version>1\.0</version>', f'<version>{version}</version>', content)
-
-with open(filepath, 'w') as f:
-    f.write(content)
-
-print(f"Fixed metadata: {filepath}")
-PYEOF
-          done
-          
-          echo "✅ All versioning fixed for $VERSION"
+          BASE=$BASE VERSION=$VERSION python3 .github/scripts/fix_versions.py
+          echo "Versioning fixed for $VERSION"
 
       - name: Checkout flutter_employee_sdk
         uses: actions/checkout@v4
@@ -135,7 +82,7 @@ PYEOF
           git diff --staged --quiet && echo "No changes to commit" && exit 0
           git commit -m "Release Flutter Employee SDK v$VERSION"
           git push
-          git tag "v$VERSION" 2>/dev/null || echo "Tag v$VERSION already exists, skipping"
+          git tag "v$VERSION" 2>/dev/null || echo "Tag already exists, skipping"
           git push origin "v$VERSION" 2>/dev/null || echo "Tag already pushed, skipping"
           echo "SDK repo done v$VERSION"
 
@@ -145,6 +92,6 @@ PYEOF
           git remote set-url origin https://x-access-token:${{ secrets.SDK_REPO_TOKEN }}@github.com/DhruvPanchalSL/flutter_employee_module.git
           git config user.name "GitHub Actions Bot"
           git config user.email "actions@github.com"
-          git tag "v$VERSION" 2>/dev/null || echo "Tag v$VERSION already exists, skipping"
+          git tag "v$VERSION" 2>/dev/null || echo "Tag already exists, skipping"
           git push origin "v$VERSION" 2>/dev/null || echo "Tag already pushed, skipping"
           echo "Module repo done v$VERSION"
