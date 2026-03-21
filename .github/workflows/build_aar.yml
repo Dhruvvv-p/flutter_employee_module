@@ -35,20 +35,22 @@ jobs:
       - name: Flutter pub get
         run: flutter pub get
 
-      - name: Build AAR
-        run: flutter build aar --no-profile
-
-      - name: Rename version folders and files
+      - name: Build AAR and fix versioning
         run: |
           VERSION=${{ env.VERSION }}
+          flutter build aar --no-profile
+          
           BASE="build/host/outputs/repo/com/example/flutter_employee_module"
-
+          
+          # Rename folders from 1.0 to VERSION
           for VARIANT in flutter_debug flutter_release; do
             OLD_DIR="$BASE/$VARIANT/1.0"
             NEW_DIR="$BASE/$VARIANT/$VERSION"
-
+            
             if [ -d "$OLD_DIR" ]; then
               mv "$OLD_DIR" "$NEW_DIR"
+              
+              # Rename files inside folder
               for FILE in "$NEW_DIR"/*; do
                 FILENAME=$(basename "$FILE")
                 NEW_FILENAME="${FILENAME//1.0/$VERSION}"
@@ -58,16 +60,58 @@ jobs:
               done
             fi
           done
+          
+          # Fix pom files using Python for reliable XML editing
+          find "$BASE" -name "*.pom" | while read FILE; do
+            python3 << PYEOF
+import re
 
-          find "$BASE" \( -name "*.pom" -o -name "*.module" -o -name "maven-metadata.xml" \) | while read FILE; do
-            sed -i "s|<version>[0-9]*\.[0-9]*\.[0-9]*</version>|<version>$VERSION</version>|" "$FILE"
-            sed -i 's|flutter_debug-1\.0|flutter_debug-'"$VERSION"'|g' "$FILE"
-            sed -i 's|flutter_release-1\.0|flutter_release-'"$VERSION"'|g' "$FILE"
-            sed -i 's|<latest>[0-9]*\.[0-9]*\.[0-9]*</latest>|<latest>'"$VERSION"'</latest>|g' "$FILE"
-            sed -i 's|<release>[0-9]*\.[0-9]*\.[0-9]*</release>|<release>'"$VERSION"'</release>|g' "$FILE"
+filepath = "$FILE"
+version = "$VERSION"
+
+with open(filepath, 'r') as f:
+    content = f.read()
+
+# Fix artifact version - only the one right after artifactId
+content = re.sub(
+    r'(<artifactId>flutter_(?:debug|release)</artifactId>\s*\n\s*<version>)[^<]*(</version>)',
+    r'\g<1>' + version + r'\g<2>',
+    content
+)
+
+# Fix filename references inside pom
+content = re.sub(r'flutter_(debug|release)-1\.0', r'flutter_\1-' + version, content)
+
+with open(filepath, 'w') as f:
+    f.write(content)
+
+print(f"Fixed: {filepath}")
+PYEOF
           done
+          
+          # Fix maven-metadata.xml files
+          find "$BASE" -name "maven-metadata.xml" | while read FILE; do
+            python3 << PYEOF
+import re
 
-          echo "Renamed to version $VERSION"
+filepath = "$FILE"
+version = "$VERSION"
+
+with open(filepath, 'r') as f:
+    content = f.read()
+
+content = re.sub(r'<latest>[^<]*</latest>', f'<latest>{version}</latest>', content)
+content = re.sub(r'<release>[^<]*</release>', f'<release>{version}</release>', content)
+content = re.sub(r'<version>1\.0</version>', f'<version>{version}</version>', content)
+
+with open(filepath, 'w') as f:
+    f.write(content)
+
+print(f"Fixed metadata: {filepath}")
+PYEOF
+          done
+          
+          echo "✅ All versioning fixed for $VERSION"
 
       - name: Checkout flutter_employee_sdk
         uses: actions/checkout@v4
