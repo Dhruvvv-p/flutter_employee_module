@@ -89,7 +89,7 @@ jobs:
       - name: Tag Flutter module repo
         run: |
           VERSION=${{ env.VERSION }}
-          git remote set-url origin https://x-access-token:${{ secrets.SDK_REPO_TOKEN }}@github.com/DhruvPanchalSL/flutter_employee_module.git
+          git remote set-url origin https://x-access-token:${{ secrets.SDK_REPO_TOKEN }}@github.com/Dhruvvv-p/flutter_employee_module.git
           git config user.name "GitHub Actions Bot"
           git config user.email "actions@github.com"
           git tag "v$VERSION" 2>/dev/null || echo "Tag already exists, skipping"
