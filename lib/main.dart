@@ -124,7 +124,7 @@ class _EmployeeScreenState extends State<EmployeeScreen>
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Text('Flutter version test'),
+                const Text('Flutter version test 2'),
                 const Icon(Icons.badge, size: 64, color: Color(0xFF1A237E)),
                 const SizedBox(height: 16),
                 const Text(

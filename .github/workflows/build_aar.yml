@@ -63,7 +63,7 @@ jobs:
       - name: Checkout flutter_employee_sdk
         uses: actions/checkout@v4
         with:
-          repository: DhruvPanchalSL/flutter_employee_sdk
+          repository: Dhruvvv-p/flutter_employee_sdk
           token: ${{ secrets.SDK_REPO_TOKEN }}
           path: sdk_repo
 
